@@ -7,7 +7,12 @@ env=${APP_ENV:-production}
 cd /var/www
 
 echo "Installing composer dependencies..."
-composer install --optimize-autoloader --no-dev
+
+if [ "$env" != "production" ]; then
+    composer install --optimize-autoloader --no-dev
+else
+    composer install
+fi
 
 if [ "$env" != "local" ]; then
     echo "Caching configuration..."
@@ -20,13 +25,16 @@ fi
 
 if [ "$1" != "" ]; then
     exec "$@"
+
 elif [ ${container_role} = "app" ]; then
     php artisan migrate --force
     php artisan tenants:migrate
     php artisan tenants:seed --class PermissionSeeder
     exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.app.conf
+
 elif [ ${container_role} = "queue" ]; then
-    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.queue.conf
+    echo "*/1 * * * * php /var/www/artisan schedule:run --verbose --no-interaction" > /etc/supercronic/laravel
+
 else
     echo "Container mode mismatched."
     exit 1

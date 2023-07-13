@@ -1,5 +1,6 @@
 FROM ghcr.io/roadrunner-server/roadrunner:2023.2 AS roadrunner
 FROM composer:2.5.8 AS composer
+FROM iolk/supercronic AS supercronic
 FROM php:8.2-alpine
 
 # Adapted from https://github.com/joseluisq/alpine-php-fpm/blob/master/8.2-fpm/Dockerfile
@@ -12,6 +13,15 @@ COPY --from=roadrunner /usr/bin/rr /usr/local/bin/rr
 
 # Install composer
 COPY --from=composer /usr/bin/composer /usr/local/bin/composer
+
+# Install supercronic
+COPY --from=supercronic /usr/bin/supercronic /usr/bin/supercronic
+
+# Accepted values: production | development
+ARG APP_ENV=production
+
+# Accepted values: app | queue
+ARG CONTAINER_ROLE=app
 
 ENV DEV_BUILD_PKGS \
     linux-headers \
@@ -143,6 +153,11 @@ RUN set -eux \
     && (find /usr/local/sbin -type f -print0 | xargs -n1 -0 strip --strip-all -p 2>/dev/null || true) \
     && true
 
+# Configures supercronic scheduler
+RUN set -eux \
+    chmod +x /usr/bin/supercronic \
+    && mkdir -p /etc/supercronic
+
 # Install locales
 ENV MUSL_LOCALE_DEPS cmake make musl-dev gcc gettext-dev
 ENV MUSL_LOCPATH /usr/share/i18n/locales/musl
@@ -156,12 +171,10 @@ RUN set -eux \
     && apk del $MUSL_LOCALE_DEPS \
     && true
 
-COPY conf/supervisord* /etc/supervisor/conf.d/
-COPY conf/scheduler.sh /usr/local/bin/scheduler.sh
-COPY conf/docker-php-entrypoint /usr/local/bin/docker-php-entrypoint
+COPY deploy/$APP_ENV/supervisord* /etc/supervisor/conf.d/
+COPY deploy/docker-php-entrypoint /usr/local/bin/docker-php-entrypoint
 
 RUN set -eux \
-    && chmod +x /usr/local/bin/scheduler.sh \
     && chmod +x /usr/local/bin/docker-php-entrypoint \
     && mkdir -p /var/log/supervisor
 
@@ -174,7 +187,7 @@ RUN set -eux  \
     && find . -type f -exec chmod 644 {} \; \
     && find . -type d -exec chmod 755 {} \;
 
-COPY conf/.rr.yaml /var/www/.rr.yaml
+COPY deploy/$APP_ENV/.rr.yaml /var/www/.rr.yaml
 
 EXPOSE 80 443 6001
 
