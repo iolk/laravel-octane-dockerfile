@@ -1,0 +1,35 @@
+#!/bin/sh
+set -e
+
+container_role=${CONTAINER_ROLE:-app}
+env=${APP_ENV:-production}
+
+cd /var/www
+
+echo "Installing composer dependencies..."
+composer install --optimize-autoloader --no-dev
+
+if [ "$env" != "local" ]; then
+    echo "Caching configuration..."
+    php artisan optimize:clear
+    php artisan config:cache
+    php artisan route:cache
+    php artisan view:cache
+    php artisan optimize
+fi
+
+if [ "$1" != "" ]; then
+    exec "$@"
+elif [ ${container_role} = "app" ]; then
+    php artisan migrate --force
+    php artisan tenants:migrate
+    php artisan tenants:seed --class PermissionSeeder
+    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.app.conf
+elif [ ${container_role} = "queue" ]; then
+    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.queue.conf
+else
+    echo "Container mode mismatched."
+    exit 1
+fi
+
+
