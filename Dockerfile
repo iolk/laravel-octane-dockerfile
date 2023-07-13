@@ -1,12 +1,10 @@
+# Adapted from https://github.com/joseluisq/alpine-php-fpm/blob/master/8.2-fpm/Dockerfile
+
 FROM ghcr.io/roadrunner-server/roadrunner:2023.2 AS roadrunner
 FROM composer:2.5.8 AS composer
 FROM iolk/supercronic AS supercronic
+
 FROM php:8.2-alpine
-
-# Adapted from https://github.com/joseluisq/alpine-php-fpm/blob/master/8.2-fpm/Dockerfile
-
-LABEL Maintainer="Alessandro Lodi" \
-    Description="PHP v8.2 with essential extensions for Laravel deploy with Octane and RoadRunner on top of Alpine Linux."
 
 # Install roadrunner - https://roadrunner.dev/
 COPY --from=roadrunner /usr/bin/rr /usr/local/bin/rr
@@ -19,9 +17,6 @@ COPY --from=supercronic /usr/bin/supercronic /usr/bin/supercronic
 
 # Accepted values: production | development
 ARG APP_ENV=production
-
-# Accepted values: app | queue
-ARG CONTAINER_ROLE=app
 
 ENV DEV_BUILD_PKGS \
     linux-headers \
@@ -39,6 +34,9 @@ RUN set -eux \
     && apk add --no-cache \
     $DEV_BUILD_PKGS \
     postgresql-client \
+    # Required in development
+    # TODO: make optional
+    nodejs \
     supervisor \
     freetds \
     freetype \
@@ -127,6 +125,10 @@ RUN set -eux \
     && docker-php-ext-install -j$(nproc) soap \
     && true \
     \
+    # Install pcntl
+    && docker-php-ext-install -j$(nproc) pcntl \
+    && true \
+    \
     # Install sockets (needed by Octane)
     && CFLAGS="${CFLAGS:=} -D_GNU_SOURCE" docker-php-ext-install -j$(nproc) \
     sockets \
@@ -189,7 +191,7 @@ RUN set -eux  \
 
 COPY deploy/$APP_ENV/.rr.yaml /var/www/.rr.yaml
 
-EXPOSE 80 443 6001
+EXPOSE 80 6001
 
 ENTRYPOINT ["docker-php-entrypoint"]
 

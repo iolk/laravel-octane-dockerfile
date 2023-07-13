@@ -9,9 +9,9 @@ cd /var/www
 echo "Installing composer dependencies..."
 
 if [ "$env" != "production" ]; then
-    composer install --optimize-autoloader --no-dev
-else
     composer install
+else
+    composer install --optimize-autoloader --no-dev
 fi
 
 if [ "$env" != "local" ]; then
@@ -27,9 +27,6 @@ if [ "$1" != "" ]; then
     exec "$@"
 
 elif [ ${container_role} = "app" ]; then
-    php artisan migrate --force
-    php artisan tenants:migrate
-    php artisan tenants:seed --class PermissionSeeder
     exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.app.conf
 
 elif [ ${container_role} = "queue" ]; then
