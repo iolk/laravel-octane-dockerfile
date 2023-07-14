@@ -57,6 +57,7 @@ RUN set -eux \
     && if [ ${APP_ENV} = "development" ] ; then \
     apk add --no-cache \
     nodejs \
+    bash \
     ; fi \
     && true \
     \
@@ -175,6 +176,8 @@ RUN set -eux \
 # Create rr config dir
 RUN mkdir -p /etc/rr
 
+WORKDIR /var/www/html
+
 COPY deploy/$APP_ENV/.rr.yaml /etc/rr/.rr.yaml
 COPY deploy/$APP_ENV/supervisord* /etc/supervisor/conf.d/
 COPY deploy/docker-php-entrypoint /usr/local/bin/docker-php-entrypoint
@@ -186,6 +189,13 @@ RUN set -eux \
     && mkdir -p /etc/supercronic \
     # Supervisor log fix
     && mkdir -p /var/log/supervisor
+
+RUN set -x \
+    # Support to sail in development
+    && if [ ${APP_ENV} = "development" ] ; then \
+    adduser -D -s /bin/bash -G www-data -u 1337 sail \
+    ; fi  \
+    && true
 
 EXPOSE 80 6001
 

@@ -4,7 +4,7 @@ set -e
 container_role=${CONTAINER_ROLE:-app}
 env=${APP_ENV:-production}
 
-cd /var/www
+cd /var/www/html
 
 echo "Installing composer dependencies..."
 
@@ -30,7 +30,7 @@ elif [ ${container_role} = "app" ]; then
     exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.app.conf
 
 elif [ ${container_role} = "queue" ]; then
-    echo "*/1 * * * * php /var/www/artisan schedule:run --verbose --no-interaction" > /etc/supercronic/laravel
+    echo "*/1 * * * * php /var/www/html/artisan schedule:run --verbose --no-interaction" > /etc/supercronic/laravel
     exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.queue.conf
 
 else

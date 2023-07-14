@@ -31,7 +31,7 @@ laravel.test:
     env_file:
         - .env
     volumes:
-        - '.:/var/www'
+        - '.:/var/www/html'
     networks:
         - sail
 ```
