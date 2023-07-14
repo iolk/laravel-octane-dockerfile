@@ -30,13 +30,10 @@ ENV DEV_BUILD_PKGS \
     cmake
 
 RUN set -eux \
-    # Install dependencies
+    # Dependencies
     && apk add --no-cache \
     $DEV_BUILD_PKGS \
     postgresql-client \
-    # Required in development
-    # TODO: make optional
-    nodejs \
     supervisor \
     freetds \
     freetype \
@@ -57,6 +54,13 @@ RUN set -eux \
     && true \
     \
     # Development dependencies
+    && if [ ${APP_ENV} = "development" ] ; then \
+    apk add --no-cache \
+    nodejs \
+    ; fi \
+    && true \
+    \
+    # Build dependencies
     && apk add --no-cache --virtual .build-deps \
     autoconf \
     bzip2-dev \
@@ -155,11 +159,6 @@ RUN set -eux \
     && (find /usr/local/sbin -type f -print0 | xargs -n1 -0 strip --strip-all -p 2>/dev/null || true) \
     && true
 
-# Configures supercronic scheduler
-RUN set -eux \
-    chmod +x /usr/bin/supercronic \
-    && mkdir -p /etc/supercronic
-
 # Install locales
 ENV MUSL_LOCALE_DEPS cmake make musl-dev gcc gettext-dev
 ENV MUSL_LOCPATH /usr/share/i18n/locales/musl
@@ -173,28 +172,23 @@ RUN set -eux \
     && apk del $MUSL_LOCALE_DEPS \
     && true
 
+# Create rr config dir
+RUN mkdir -p /etc/rr
+
+COPY deploy/$APP_ENV/.rr.yaml /etc/rr/.rr.yaml
 COPY deploy/$APP_ENV/supervisord* /etc/supervisor/conf.d/
 COPY deploy/docker-php-entrypoint /usr/local/bin/docker-php-entrypoint
 
 RUN set -eux \
+    # Set up entrypoint
     && chmod +x /usr/local/bin/docker-php-entrypoint \
+    # Set up supercronic
+    && mkdir -p /etc/supercronic \
+    # Supervisor log fix
     && mkdir -p /var/log/supervisor
-
-# Setup working directory
-WORKDIR /var/www
-
-# Installing composer packages
-COPY ./ /var/www
-RUN set -eux  \
-    && find . -type f -exec chmod 644 {} \; \
-    && find . -type d -exec chmod 755 {} \;
-
-COPY deploy/$APP_ENV/.rr.yaml /var/www/.rr.yaml
 
 EXPOSE 80 6001
 
 ENTRYPOINT ["docker-php-entrypoint"]
 
 STOPSIGNAL SIGQUIT
-
-HEALTHCHECK --start-period=5s --interval=2s --timeout=5s --retries=8 CMD php artisan octane:status || exit 1

@@ -31,6 +31,7 @@ elif [ ${container_role} = "app" ]; then
 
 elif [ ${container_role} = "queue" ]; then
     echo "*/1 * * * * php /var/www/artisan schedule:run --verbose --no-interaction" > /etc/supercronic/laravel
+    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.queue.conf
 
 else
     echo "Container mode mismatched."
