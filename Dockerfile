@@ -1,10 +1,10 @@
 # Adapted from https://github.com/joseluisq/alpine-php-fpm/blob/master/8.2-fpm/Dockerfile
 
 FROM ghcr.io/roadrunner-server/roadrunner:2023.2 AS roadrunner
-FROM composer:2.5.8 AS composer
+FROM composer:2.7.7 AS composer
 FROM iolk/supercronic AS supercronic
 
-FROM php:8.2-alpine
+FROM php:8.3-alpine
 
 # Install roadrunner - https://roadrunner.dev/
 COPY --from=roadrunner /usr/bin/rr /usr/local/bin/rr
@@ -50,6 +50,9 @@ RUN set -eux \
     libxpm \
     libxslt \
     libzip \
+    c-client \
+    ca-certificates \
+    openssl \
     tzdata \
     && true \
     \
@@ -76,7 +79,6 @@ RUN set -eux \
     gmp-dev \
     icu-dev \
     imagemagick-dev \
-    imap-dev \
     krb5-dev \
     libc-dev \
     libjpeg-turbo-dev \
@@ -88,6 +90,7 @@ RUN set -eux \
     libxpm-dev \
     libxslt-dev \
     libzip-dev \
+    imap-dev \
     openssl-dev \
     pcre-dev \
     pkgconf \
@@ -119,6 +122,11 @@ RUN set -eux \
     \
     # Install pgsql
     && docker-php-ext-install -j$(nproc) pgsql \
+    && true \
+    # Install imap
+    && docker-php-ext-configure imap --with-kerberos --with-imap-ssl \
+    && docker-php-ext-install -j$(nproc) imap \
+    && docker-php-ext-enable imap \
     && true \
     \
     # Install redis
